@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, GraduationCap, History, Settings } from 'lucide-react'
+import { LayoutDashboard, GraduationCap, History } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 const navItems = [
@@ -10,11 +10,11 @@ const navItems = [
 
 export function Sidebar() {
   return (
-    <aside 
+    <aside
       className="w-56 border-r flex flex-col"
-      style={{ 
-        backgroundColor: 'var(--bg-secondary)', 
-        borderColor: 'var(--border-color)' 
+      style={{
+        backgroundColor: 'var(--bg-secondary)',
+        borderColor: 'var(--border-color)'
       }}
     >
       <nav className="flex-1 p-4">
@@ -42,11 +42,11 @@ export function Sidebar() {
           ))}
         </ul>
       </nav>
-      
+
       {/* Footer */}
-      <div 
+      <div
         className="p-4 border-t text-xs"
-        style={{ 
+        style={{
           borderColor: 'var(--border-color)',
           color: 'var(--text-muted)',
         }}

@@ -54,11 +54,14 @@ cp env.example .env
 ### Pre-training on Historical Data
 
 ```bash
+
 # Place your CSV file in data/historical/XAGUSD_1M.csv
 # CSV format: timestamp,open,high,low,close,volume
 
 # Run pre-training
 python scripts/pretrain.py --csv data/historical/XAGUSD_1M.csv --epochs 100
+python scripts/pretrain.py --csv data/historical/XAG_GOLD_PRO.csv --timesteps 1000000
+
 ```
 
 ### Running the Server
@@ -107,36 +110,40 @@ xagusd-rl-trader/
 
 All settings can be configured via environment variables or `.env` file:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `TRADING_LOT_SIZE` | Position size in lots | 0.3 |
-| `TRADING_STOP_LOSS_USD` | Stop loss in USD | 300 |
-| `TRADING_TAKE_PROFIT_USD` | Take profit in USD | 500 |
-| `TRADING_MAX_LOSS_USD` | Max loss before episode fails | 1000 |
-| `MODEL_SEQUENCE_LENGTH` | Number of candles to process | 120 |
-| `MODEL_HIDDEN_SIZE` | LSTM hidden dimension | 256 |
-| `TRAINING_LEARNING_RATE` | PPO learning rate | 0.0003 |
+| Variable                    | Description                   | Default |
+| --------------------------- | ----------------------------- | ------- |
+| `TRADING_LOT_SIZE`        | Position size in lots         | 0.3     |
+| `TRADING_STOP_LOSS_USD`   | Stop loss in USD              | 300     |
+| `TRADING_TAKE_PROFIT_USD` | Take profit in USD            | 500     |
+| `TRADING_MAX_LOSS_USD`    | Max loss before episode fails | 1000    |
+| `MODEL_SEQUENCE_LENGTH`   | Number of candles to process  | 120     |
+| `MODEL_HIDDEN_SIZE`       | LSTM hidden dimension         | 256     |
+| `TRAINING_LEARNING_RATE`  | PPO learning rate             | 0.0003  |
 
 See `env.example` for all available options.
 
 ## API Endpoints
 
 ### Agent Control
+
 - `POST /api/agent/start` - Start live trading
 - `POST /api/agent/stop` - Stop trading
 - `GET /api/agent/status` - Get agent status
 
 ### Training
+
 - `POST /api/training/pretrain` - Start pre-training
 - `POST /api/training/stop` - Stop training
 - `GET /api/training/progress` - Get training metrics
 
 ### Data
+
 - `GET /api/data/candles` - Get historical candles
 - `GET /api/data/trades` - Get trade history
 - `GET /api/data/metrics` - Get performance metrics
 
 ### WebSocket
+
 - `WS /ws/live` - Real-time updates stream
 
 ## Reward Function
@@ -163,4 +170,3 @@ reward = -prediction_penalty * penalty_weight + pnl_reward * 0.01
 ## License
 
 MIT License
-

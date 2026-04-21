@@ -1,0 +1,14 @@
+{
+  "steps": 2,
+  "total_reward": -491.05353416813773,
+  "trading_stats": {
+    "total_trades": 1,
+    "winning_trades": 0,
+    "losing_trades": 1,
+    "win_rate": 0.0,
+    "total_pnl": -1410.0008010864203,
+    "avg_win": 0,
+    "avg_loss": 1410.0008010864203,
+    "profit_factor": 0.0
+  }
+}

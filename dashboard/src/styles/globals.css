@@ -69,8 +69,8 @@ body {
 /* Card styles */
 @layer components {
   .card {
-    @apply bg-dark-bg-card dark:bg-dark-bg-card light:bg-light-bg-card;
-    @apply border border-dark-border dark:border-dark-border light:border-light-border;
+    /* @apply bg-dark-bg-card dark:bg-dark-bg-card light:bg-light-bg-card; */
+    /* @apply border border-dark-border dark:border-dark-border light:border-light-border; */
     @apply rounded-lg p-4;
     background: var(--bg-card);
     border-color: var(--border-color);

@@ -70,18 +70,25 @@ def pretrain(
     # Import here to avoid circular imports
     from src.models.actor_critic import HybridActorCritic
     from src.agent.ppo_agent import PPOAgent, PPOConfig
-    from src.agent.trainer import Trainer, TrainingConfig
-    from src.environment.trading_env import TradingEnvironment
-    from src.data.csv_loader import CSVDataLoader
-    from src.utils.checkpoint import CheckpointManager
-    
+    from src.environment.reward_calculator import AdaptiveRewardCalculator, RewardCalculator
+
+    # Training config
+    train_config = TrainingConfig(
+        total_timesteps=timesteps,
+        checkpoint_dir=settings.checkpoint_dir,
+        tensorboard_dir=settings.tensorboard_dir,
+        checkpoint_interval_minutes=settings.training_checkpoint_interval_minutes,
+    )
+
     # Initialize components
     model = HybridActorCritic(
         sequence_length=settings.model_sequence_length,
+        input_dim=settings.model_input_dim,
         hidden_dim=settings.model_hidden_size,
         num_layers=settings.model_num_layers,
         num_heads=settings.model_attention_heads,
         dropout=settings.model_dropout,
+        prediction_dim=settings.model_input_dim,
         device=settings.device,
     )
     
@@ -99,12 +106,22 @@ def pretrain(
     
     agent = PPOAgent(model, config)
     
+    # Select reward calculator
+    if settings.training_use_adaptive_reward:
+        reward_calculator = AdaptiveRewardCalculator()
+        logger.info("Using Adaptive Reward Calculator")
+    else:
+        reward_calculator = RewardCalculator()
+        logger.info("Using Standard Reward Calculator")
+
     env = TradingEnvironment(
         sequence_length=settings.model_sequence_length,
         lot_size=settings.trading_lot_size,
         stop_loss_usd=settings.trading_stop_loss_usd,
         take_profit_usd=settings.trading_take_profit_usd,
         max_loss_usd=settings.trading_max_loss_usd,
+        input_dim=settings.model_input_dim,
+        reward_calculator=reward_calculator,
     )
     
     # Load checkpoint if provided
@@ -113,13 +130,7 @@ def pretrain(
         checkpoint_mgr.load(model, agent.optimizer, checkpoint_path=checkpoint)
         logger.info("Loaded checkpoint", path=str(checkpoint))
     
-    # Training config
-    train_config = TrainingConfig(
-        total_timesteps=timesteps,
-        checkpoint_dir=settings.checkpoint_dir,
-        tensorboard_dir=settings.tensorboard_dir,
-        checkpoint_interval_minutes=settings.training_checkpoint_interval_minutes,
-    )
+
     
     trainer = Trainer(agent, env, train_config)
     
@@ -174,9 +185,11 @@ def backtest(
     # Initialize
     model = HybridActorCritic(
         sequence_length=settings.model_sequence_length,
+        input_dim=settings.model_input_dim,
         hidden_dim=settings.model_hidden_size,
         num_layers=settings.model_num_layers,
         num_heads=settings.model_attention_heads,
+        prediction_dim=settings.model_input_dim,
         device=settings.device,
     )
     
@@ -188,6 +201,7 @@ def backtest(
         stop_loss_usd=settings.trading_stop_loss_usd,
         take_profit_usd=settings.trading_take_profit_usd,
         max_loss_usd=settings.trading_max_loss_usd,
+        input_dim=settings.model_input_dim,
     )
     
     # Load checkpoint

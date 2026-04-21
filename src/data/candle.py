@@ -12,7 +12,7 @@ import numpy as np
 
 @dataclass(slots=True)
 class Candle:
-    """Represents a single OHLCV candle."""
+    """Represents a single OHLCV candle with optional external features."""
 
     timestamp: datetime
     open: float
@@ -20,11 +20,12 @@ class Candle:
     low: float
     close: float
     volume: float
+    gold_close: float = 0.0
 
     def to_array(self) -> np.ndarray:
-        """Convert candle to numpy array [O, H, L, C, V]."""
+        """Convert candle to numpy array [O, H, L, C, V, Gold]."""
         return np.array(
-            [self.open, self.high, self.low, self.close, self.volume],
+            [self.open, self.high, self.low, self.close, self.volume, self.gold_close],
             dtype=np.float32,
         )
 
@@ -33,6 +34,8 @@ class Candle:
         """Create candle from numpy array."""
         if timestamp is None:
             timestamp = datetime.now()
+        
+        gold_val = float(arr[5]) if len(arr) > 5 else 0.0
         return cls(
             timestamp=timestamp,
             open=float(arr[0]),
@@ -40,6 +43,7 @@ class Candle:
             low=float(arr[2]),
             close=float(arr[3]),
             volume=float(arr[4]),
+            gold_close=gold_val
         )
 
     @classmethod
@@ -58,6 +62,7 @@ class Candle:
             low=float(data["low"]),
             close=float(data["close"]),
             volume=float(data.get("volume", 0)),
+            gold_close=float(data.get("gold_close", 0.0)),
         )
 
     def to_dict(self) -> dict:
@@ -69,6 +74,7 @@ class Candle:
             "low": self.low,
             "close": self.close,
             "volume": self.volume,
+            "gold_close": self.gold_close,
         }
 
     @property
@@ -140,9 +146,9 @@ class CandleBuffer:
         return len(self._candles) == self.max_size
 
     def to_array(self) -> np.ndarray:
-        """Convert all candles to numpy array of shape [N, 5]."""
+        """Convert all candles to numpy array of shape [N, 6]."""
         if not self._candles:
-            return np.empty((0, 5), dtype=np.float32)
+            return np.empty((0, 6), dtype=np.float32)
         return np.array([c.to_array() for c in self._candles], dtype=np.float32)
 
     def get_latest(self, n: int = 1) -> list[Candle]:

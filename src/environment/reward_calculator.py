@@ -87,14 +87,21 @@ class RewardCalculator:
         Args:
             predicted: Predicted values [5] (OHLCV)
             actual: Actual values [5] (OHLCV)
-            
         Returns:
             MAPE value
         """
-        # Use absolute values to handle negative volumes or edge cases
-        actual_abs = np.abs(actual) + self.epsilon
+        if len(predicted) > len(actual):
+            predicted = predicted[:len(actual)]
+        elif len(actual) > len(predicted):
+            actual = actual[:len(predicted)]
+            
+        # Higher epsilon for better numerical stability in financial data
+        actual_abs = np.abs(actual) + 1e-5
         errors = np.abs(predicted - actual) / actual_abs
-        return float(np.mean(errors) * 100)
+        mape = float(np.mean(errors) * 100)
+        
+        # Cap MAPE to prevent reward explosions
+        return min(mape, 1000.0)
     
     def calculate_prediction_penalty(
         self,

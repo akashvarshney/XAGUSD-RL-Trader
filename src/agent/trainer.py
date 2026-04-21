@@ -120,6 +120,7 @@ class Trainer:
         self.buffer = RolloutBuffer(
             buffer_size=self.config.rollout_steps,
             sequence_length=env.sequence_length,
+            num_ohlcv_features=env.input_dim,
             gamma=agent.config.gamma,
             gae_lambda=agent.config.gae_lambda,
             device=str(agent.device),

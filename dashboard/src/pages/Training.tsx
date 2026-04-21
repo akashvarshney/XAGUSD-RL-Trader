@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Play, Square, Pause, Upload, FileText } from 'lucide-react'
+import { Play, Square, Pause, FileText } from 'lucide-react'
 import { useTradingStore } from '../store/tradingStore'
 import { trainingApi, dataApi } from '../api/client'
 import { cn } from '../lib/utils'
@@ -17,7 +17,7 @@ export function Training() {
   const [csvFiles, setCsvFiles] = useState<CsvFile[]>([])
   const [selectedFile, setSelectedFile] = useState('')
   const [timesteps, setTimesteps] = useState(1000000)
-  
+
   // Fetch CSV files
   useEffect(() => {
     const fetchFiles = async () => {
@@ -31,27 +31,27 @@ export function Training() {
     }
     fetchFiles()
   }, [])
-  
+
   // Poll training progress
   useEffect(() => {
     if (trainingStatus.status !== 'pretraining') return
-    
+
     const interval = setInterval(async () => {
       const { data } = await trainingApi.getProgress()
       if (data) {
         setTrainingStatus(data)
       }
     }, 2000)
-    
+
     return () => clearInterval(interval)
   }, [trainingStatus.status, setTrainingStatus])
-  
+
   const handleStart = async () => {
     if (!selectedFile) {
       addLog('Error: No CSV file selected')
       return
     }
-    
+
     setLoading(true)
     const { data, error } = await trainingApi.startPretrain(selectedFile, timesteps)
     if (error) {
@@ -62,7 +62,7 @@ export function Training() {
     }
     setLoading(false)
   }
-  
+
   const handleStop = async () => {
     setLoading(true)
     const { data, error } = await trainingApi.stop()
@@ -74,7 +74,7 @@ export function Training() {
     }
     setLoading(false)
   }
-  
+
   const handlePause = async () => {
     setLoading(true)
     const { data, error } = await trainingApi.pause()
@@ -86,7 +86,7 @@ export function Training() {
     }
     setLoading(false)
   }
-  
+
   const handleResume = async () => {
     setLoading(true)
     const { data, error } = await trainingApi.resume()
@@ -98,29 +98,29 @@ export function Training() {
     }
     setLoading(false)
   }
-  
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <h2 
+      <h2
         className="text-2xl font-bold font-display"
         style={{ color: 'var(--text-primary)' }}
       >
         Training
       </h2>
-      
+
       <div className="grid grid-cols-2 gap-6">
         {/* Training Config */}
-        <div 
+        <div
           className="card"
           style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
         >
-          <h3 
+          <h3
             className="text-lg font-semibold mb-4"
             style={{ color: 'var(--text-primary)' }}
           >
             Pre-Training Configuration
           </h3>
-          
+
           {/* CSV File Selection */}
           <div className="mb-4">
             <label className="label">CSV Data File</label>
@@ -140,7 +140,7 @@ export function Training() {
               ))}
             </select>
           </div>
-          
+
           {/* Timesteps */}
           <div className="mb-4">
             <label className="label">Total Timesteps</label>
@@ -154,7 +154,7 @@ export function Training() {
               disabled={trainingStatus.status !== 'idle'}
             />
           </div>
-          
+
           {/* Controls */}
           <div className="flex gap-2">
             {trainingStatus.status === 'idle' && (
@@ -167,7 +167,7 @@ export function Training() {
                 Start Training
               </button>
             )}
-            
+
             {trainingStatus.status === 'pretraining' && (
               <>
                 <button
@@ -188,7 +188,7 @@ export function Training() {
                 </button>
               </>
             )}
-            
+
             {trainingStatus.status === 'paused' && (
               <>
                 <button
@@ -211,22 +211,22 @@ export function Training() {
             )}
           </div>
         </div>
-        
+
         {/* Training Progress */}
-        <div 
+        <div
           className="card"
           style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
         >
-          <h3 
+          <h3
             className="text-lg font-semibold mb-4"
             style={{ color: 'var(--text-primary)' }}
           >
             Training Progress
           </h3>
-          
+
           {/* Status */}
           <div className="flex items-center gap-2 mb-4">
-            <span 
+            <span
               className={cn(
                 "status-dot",
                 trainingStatus.status === 'pretraining' && "running",
@@ -235,14 +235,14 @@ export function Training() {
                 trainingStatus.status === 'error' && "error",
               )}
             />
-            <span 
+            <span
               className="capitalize font-medium"
               style={{ color: 'var(--text-primary)' }}
             >
               {trainingStatus.status === 'pretraining' ? 'Training' : trainingStatus.status}
             </span>
           </div>
-          
+
           {/* Progress bar */}
           <div className="mb-4">
             <div className="flex justify-between text-sm mb-1">
@@ -251,27 +251,27 @@ export function Training() {
                 {(trainingStatus.progress * 100).toFixed(1)}%
               </span>
             </div>
-            <div 
+            <div
               className="h-2 rounded-full overflow-hidden"
               style={{ backgroundColor: 'var(--bg-secondary)' }}
             >
-              <div 
+              <div
                 className="h-full bg-accent-blue transition-all duration-300"
                 style={{ width: `${trainingStatus.progress * 100}%` }}
               />
             </div>
           </div>
-          
+
           {/* Stats */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p 
+              <p
                 className="text-xs uppercase"
                 style={{ color: 'var(--text-muted)' }}
               >
                 Timesteps
               </p>
-              <p 
+              <p
                 className="text-lg font-semibold"
                 style={{ color: 'var(--text-primary)' }}
               >
@@ -279,13 +279,13 @@ export function Training() {
               </p>
             </div>
             <div>
-              <p 
+              <p
                 className="text-xs uppercase"
                 style={{ color: 'var(--text-muted)' }}
               >
                 Episodes
               </p>
-              <p 
+              <p
                 className="text-lg font-semibold"
                 style={{ color: 'var(--text-primary)' }}
               >
@@ -293,13 +293,13 @@ export function Training() {
               </p>
             </div>
             <div className="col-span-2">
-              <p 
+              <p
                 className="text-xs uppercase"
                 style={{ color: 'var(--text-muted)' }}
               >
                 Best Reward
               </p>
-              <p 
+              <p
                 className={cn(
                   "text-lg font-semibold",
                   trainingStatus.best_reward > 0 ? "number-positive" : "number-neutral"
@@ -309,10 +309,10 @@ export function Training() {
               </p>
             </div>
           </div>
-          
+
           {/* Error message */}
           {trainingStatus.error_message && (
-            <div 
+            <div
               className="mt-4 p-2 rounded text-sm"
               style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--loss)' }}
             >
@@ -321,22 +321,22 @@ export function Training() {
           )}
         </div>
       </div>
-      
+
       {/* CSV Files Info */}
-      <div 
+      <div
         className="card"
         style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
       >
         <div className="flex items-center gap-2 mb-4">
           <FileText size={18} style={{ color: 'var(--text-secondary)' }} />
-          <h3 
+          <h3
             className="text-lg font-semibold"
             style={{ color: 'var(--text-primary)' }}
           >
             Available Data Files
           </h3>
         </div>
-        
+
         {csvFiles.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>
             No CSV files found. Place your XAGUSD_1M.csv file in the data/historical/ directory.
@@ -353,7 +353,7 @@ export function Training() {
               </thead>
               <tbody>
                 {csvFiles.map((file) => (
-                  <tr 
+                  <tr
                     key={file.path}
                     className="hover:bg-opacity-5 hover:bg-white"
                     style={{ borderBottom: '1px solid var(--border-color)' }}

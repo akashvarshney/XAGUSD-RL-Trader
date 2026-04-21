@@ -141,6 +141,7 @@ class CSVDataLoader:
                 low=float(row["low"]),
                 close=float(row["close"]),
                 volume=float(row["volume"]),
+                gold_close=float(row.get("gold_close", 0.0)),
             )
             candles.append(candle)
         return candles

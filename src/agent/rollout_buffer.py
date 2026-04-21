@@ -12,10 +12,10 @@ import torch
 class RolloutBatch(NamedTuple):
     """A batch of rollout data for training."""
     
-    candles: torch.Tensor          # [batch, seq_len, 5]
+    candles: torch.Tensor          # [batch, seq_len, N]
     position_info: torch.Tensor    # [batch, 3]
     account_info: torch.Tensor     # [batch, 2]
-    predictions: torch.Tensor      # [batch, 5]
+    predictions: torch.Tensor      # [batch, N]
     trading_actions: torch.Tensor  # [batch]
     old_pred_log_probs: torch.Tensor  # [batch]
     old_action_log_probs: torch.Tensor  # [batch]
@@ -110,10 +110,10 @@ class RolloutBuffer:
         """Add a transition to the buffer.
         
         Args:
-            candles: Candle sequence [seq_len, 5]
+            candles: Candle sequence [seq_len, N]
             position_info: Position features [3]
             account_info: Account features [2]
-            prediction: Predicted candle [5]
+            prediction: Predicted candle [N]
             trading_action: Discrete action index
             pred_log_prob: Log probability of prediction
             action_log_prob: Log probability of action

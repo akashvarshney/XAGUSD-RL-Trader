@@ -53,12 +53,12 @@ class TradingEnvironment(gym.Env):
     """Trading environment for XAGUSD with hybrid action space.
     
     Observation Space:
-    - candles: [sequence_length, 5] - Normalized OHLCV data
+    - candles: [sequence_length, 16] - Normalized OHLCV + Technical Indicators
     - position: [3] - (has_position, is_long, unrealized_pnl_norm)
     - account: [2] - (total_loss_norm, margin_norm)
     
     Action Space (Hybrid):
-    - prediction: [5] - Predicted next candle (continuous)
+    - prediction: [16] - Predicted next candle features (continuous)
     - trading_action: Discrete(4) - NONE, BUY, SELL, CLOSE
     
     Reward:
@@ -80,7 +80,9 @@ class TradingEnvironment(gym.Env):
         take_profit_usd: float = DEFAULT_TAKE_PROFIT_USD,
         max_loss_usd: float = DEFAULT_MAX_LOSS_USD,
         initial_balance: float = 10000.0,
+        input_dim: int = 16, # Extended features
         normalize_obs: bool = True,
+        reward_calculator: RewardCalculator | None = None,
         seed: int | None = None,
     ) -> None:
         """Initialize the trading environment.
@@ -93,6 +95,7 @@ class TradingEnvironment(gym.Env):
             max_loss_usd: Maximum total loss before episode fails
             initial_balance: Starting balance for margin calculation
             normalize_obs: Whether to normalize observations
+            reward_calculator: Custom reward calculator (optional)
             seed: Random seed
         """
         super().__init__()
@@ -101,6 +104,9 @@ class TradingEnvironment(gym.Env):
         self.max_loss_usd = max_loss_usd
         self.initial_balance = initial_balance
         self.normalize_obs = normalize_obs
+        self.lot_size = lot_size
+        self.trading_stop_loss_usd = stop_loss_usd
+        self.trading_take_profit_usd = take_profit_usd
         
         # Components
         self.position_manager = PositionManager(
@@ -108,8 +114,11 @@ class TradingEnvironment(gym.Env):
             stop_loss_usd=stop_loss_usd,
             take_profit_usd=take_profit_usd,
         )
-        self.reward_calculator = RewardCalculator()
+        self.reward_calculator = reward_calculator or RewardCalculator()
         self.preprocessor = Preprocessor(method="rolling_zscore")
+        from src.utils.news_filter import NewsFilter
+        self.news_filter = NewsFilter()
+        self.news_filter.load_mock_events()
         self.candle_buffer = CandleBuffer(max_size=sequence_length)
         
         # Define observation space
@@ -117,7 +126,7 @@ class TradingEnvironment(gym.Env):
             "candles": spaces.Box(
                 low=-np.inf,
                 high=np.inf,
-                shape=(sequence_length, NUM_OHLCV_FEATURES),
+                shape=(sequence_length, 16),
                 dtype=np.float32,
             ),
             "position": spaces.Box(
@@ -139,13 +148,14 @@ class TradingEnvironment(gym.Env):
             "prediction": spaces.Box(
                 low=-np.inf,
                 high=np.inf,
-                shape=(NUM_OHLCV_FEATURES,),
+                shape=(16,),
                 dtype=np.float32,
             ),
             "trading_action": spaces.Discrete(4),  # NONE, BUY, SELL, CLOSE
         })
         
         # State tracking
+        self.input_dim = 16
         self._current_candle: Candle | None = None
         self._step_count = 0
         self._episode_reward = 0.0
@@ -307,15 +317,25 @@ class TradingEnvironment(gym.Env):
         
         elif action == Action.BUY:
             if not self.position_manager.has_position():
-                self.position_manager.open_position(
-                    PositionSide.LONG, price, timestamp
-                )
+                if self.news_filter.is_safe_to_trade(timestamp):
+                    sl, tp = self._calculate_dynamic_sl_tp(price)
+                    self.position_manager.open_position(
+                        PositionSide.LONG, price, timestamp,
+                        stop_loss_usd=sl, take_profit_usd=tp
+                    )
+                else:
+                    logger.info("BUY action blocked by NewsFilter")
         
         elif action == Action.SELL:
             if not self.position_manager.has_position():
-                self.position_manager.open_position(
-                    PositionSide.SHORT, price, timestamp
-                )
+                if self.news_filter.is_safe_to_trade(timestamp):
+                    sl, tp = self._calculate_dynamic_sl_tp(price)
+                    self.position_manager.open_position(
+                        PositionSide.SHORT, price, timestamp,
+                        stop_loss_usd=sl, take_profit_usd=tp
+                    )
+                else:
+                    logger.info("SELL action blocked by NewsFilter")
         
         elif action == Action.CLOSE:
             if self.position_manager.has_position():
@@ -326,6 +346,47 @@ class TradingEnvironment(gym.Env):
                     realized_pnl = closed.realized_pnl
         
         return realized_pnl
+
+    def _calculate_dynamic_sl_tp(self, current_price: float) -> tuple[float, float]:
+        """Calculate ATR-based stop loss and take profit.
+        
+        Returns:
+            Tuple of (stop_loss_usd, take_profit_usd)
+        """
+        # Get last 20 candles for ATR
+        raw_candles = self.candle_buffer.to_array()
+        if len(raw_candles) < 20:
+            return self.trading_stop_loss_usd, self.trading_take_profit_usd
+        
+        from src.data.preprocessor import Preprocessor
+        from src.config.constants import XAGUSD_CONTRACT_SIZE
+        
+        high = raw_candles[:, 1]
+        low = raw_candles[:, 2]
+        close = raw_candles[:, 3]
+        
+        atr_values = Preprocessor.calculate_atr(high, low, close, window=14)
+        current_atr = atr_values[-1]
+        
+        # Default if ATR is invalid
+        if np.isnan(current_atr) or current_atr <= 0:
+            return self.trading_stop_loss_usd, self.trading_take_profit_usd
+            
+        # Stop Loss: 1.5x ATR
+        # Take Profit: 2.5x ATR (Providing a good Risk:Reward ratio)
+        sl_price_diff = 1.5 * current_atr
+        tp_price_diff = 2.5 * current_atr
+        
+        # Convert price diff to USD
+        # PnL = diff * volume * contract_size
+        sl_usd = sl_price_diff * self.lot_size * XAGUSD_CONTRACT_SIZE
+        tp_usd = tp_price_diff * self.lot_size * XAGUSD_CONTRACT_SIZE
+        
+        # Ensure minimums to avoid micro-stops
+        sl_usd = max(sl_usd, 100.0)
+        tp_usd = max(tp_usd, 150.0)
+        
+        return float(sl_usd), float(tp_usd)
     
     def _check_termination(self) -> bool:
         """Check if episode should terminate.
@@ -347,18 +408,25 @@ class TradingEnvironment(gym.Env):
         Returns:
             Observation dictionary
         """
-        # Get candle data
-        if self.candle_buffer.is_full():
-            candles = self.candle_buffer.to_array()
-        else:
-            # Pad with zeros if buffer not full
-            candles = np.zeros(
-                (self.sequence_length, NUM_OHLCV_FEATURES),
-                dtype=np.float32,
-            )
-            buffer_data = self.candle_buffer.to_array()
-            if len(buffer_data) > 0:
-                candles[-len(buffer_data):] = buffer_data
+        # Get raw data [seq, 6] (OHLCV + Gold)
+        raw_data = np.zeros(
+            (self.sequence_length, NUM_RAW_FEATURES),
+            dtype=np.float32,
+        )
+        buffer_data = self.candle_buffer.to_array()
+        if len(buffer_data) > 0:
+            raw_data[-len(buffer_data):] = buffer_data
+        
+        # Create extended features [seq, 19]
+        from src.data.preprocessor import create_features
+        timestamps = self.candle_buffer.timestamps
+        # Pad timestamps to match sequence length
+        if len(timestamps) < self.sequence_length:
+            pad_len = self.sequence_length - len(timestamps)
+            first_ts = timestamps[0] if timestamps else datetime.now()
+            timestamps = [first_ts] * pad_len + list(timestamps)
+            
+        candles = create_features(raw_data, timestamps=timestamps)
         
         # Normalize candles
         if self.normalize_obs:

@@ -82,6 +82,7 @@ class Settings(BaseSettings):
     # Model Settings
     # =========================================================================
     model_sequence_length: int = DEFAULT_SEQUENCE_LENGTH
+    model_input_dim: int = 19
     model_hidden_size: int = DEFAULT_HIDDEN_SIZE
     model_num_layers: int = DEFAULT_NUM_LAYERS
     model_attention_heads: int = DEFAULT_ATTENTION_HEADS
@@ -101,6 +102,7 @@ class Settings(BaseSettings):
     training_max_grad_norm: float = DEFAULT_MAX_GRAD_NORM
     training_num_epochs: int = DEFAULT_NUM_EPOCHS
     training_checkpoint_interval_minutes: int = DEFAULT_CHECKPOINT_INTERVAL_MINUTES
+    training_use_adaptive_reward: bool = False
 
     # =========================================================================
     # Path Settings

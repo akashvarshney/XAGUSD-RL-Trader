@@ -187,6 +187,8 @@ class PositionManager:
         side: PositionSide,
         price: float,
         timestamp: datetime | None = None,
+        stop_loss_usd: float | None = None,
+        take_profit_usd: float | None = None,
     ) -> Position | None:
         """Open a new position.
         
@@ -210,8 +212,8 @@ class PositionManager:
             entry_price=price,
             volume=self.lot_size,
             open_time=timestamp,
-            stop_loss_usd=self.stop_loss_usd,
-            take_profit_usd=self.take_profit_usd,
+            stop_loss_usd=stop_loss_usd or self.stop_loss_usd,
+            take_profit_usd=take_profit_usd or self.take_profit_usd,
             current_price=price,
             unrealized_pnl=0.0,
         )

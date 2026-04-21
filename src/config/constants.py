@@ -23,8 +23,12 @@ class Action(IntEnum):
 # OHLCV column names
 OHLCV_COLUMNS: Final[list[str]] = ["open", "high", "low", "close", "volume"]
 
-# Number of OHLCV features
-NUM_OHLCV_FEATURES: Final[int] = 5
+# Number of raw features from the data source (OHLCV + Gold)
+NUM_RAW_FEATURES: Final[int] = 6
+
+# Number of total features (raw + technical indicators + external)
+# 5 (OHLCV) + 11 (indicators) + 1 (gold) + 1 (hour) + 1 (day) = 19
+NUM_TOTAL_FEATURES: Final[int] = 19
 
 # Position info features: [has_position, is_long, unrealized_pnl_normalized]
 POSITION_FEATURES: Final[list[str]] = ["has_position", "is_long", "unrealized_pnl_norm"]

@@ -256,3 +256,4 @@ Desktop.ini
 *.bak
 *.tmp
 *.temp
+!dashboard/src/lib/

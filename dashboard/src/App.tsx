@@ -9,10 +9,10 @@ import { useWebSocket } from './hooks/useWebSocket'
 
 function App() {
   const { theme } = useThemeStore()
-  
+
   // Connect WebSocket
   useWebSocket()
-  
+
   // Apply theme class to document
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark')

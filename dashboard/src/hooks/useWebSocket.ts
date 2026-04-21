@@ -5,36 +5,35 @@ const WS_URL = `ws://${window.location.hostname}:8000/ws/live`
 
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
-  
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+
   const {
     setConnected,
     setAgentStatus,
     setTrainingStatus,
     addCandle,
     addPrediction,
-    setMetrics,
     addLog,
   } = useTradingStore()
-  
+
   const connect = useCallback(() => {
     try {
       const ws = new WebSocket(WS_URL)
       wsRef.current = ws
-      
+
       ws.onopen = () => {
         console.log('WebSocket connected')
         setConnected(true)
         addLog('Connected to server')
-        
+
         // Request initial status
         ws.send(JSON.stringify({ type: 'get_status' }))
-        
+
         // Subscribe to channels
         ws.send(JSON.stringify({ type: 'subscribe', channel: 'trading' }))
         ws.send(JSON.stringify({ type: 'subscribe', channel: 'training' }))
       }
-      
+
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
@@ -43,19 +42,19 @@ export function useWebSocket() {
           console.error('Failed to parse WebSocket message:', e)
         }
       }
-      
+
       ws.onclose = () => {
         console.log('WebSocket disconnected')
         setConnected(false)
         addLog('Disconnected from server')
-        
+
         // Reconnect after delay
         reconnectTimeoutRef.current = setTimeout(() => {
           console.log('Attempting to reconnect...')
           connect()
         }, 3000)
       }
-      
+
       ws.onerror = (error) => {
         console.error('WebSocket error:', error)
         addLog('Connection error')
@@ -65,13 +64,13 @@ export function useWebSocket() {
       reconnectTimeoutRef.current = setTimeout(connect, 3000)
     }
   }, [setConnected, addLog])
-  
+
   const handleMessage = useCallback((data: any) => {
     switch (data.type) {
       case 'connected':
         addLog(`Connected with ID: ${data.client_id}`)
         break
-        
+
       case 'status':
         if (data.agent) {
           setAgentStatus(data.agent)
@@ -80,7 +79,7 @@ export function useWebSocket() {
           setTrainingStatus(data.training)
         }
         break
-        
+
       case 'step':
         if (data.candle) {
           addCandle(data.candle)
@@ -97,7 +96,7 @@ export function useWebSocket() {
         }
         addLog(`Step: Action=${data.action}, Reward=${data.reward?.toFixed(4)}`)
         break
-        
+
       case 'training_progress':
         setTrainingStatus({
           timesteps: data.timesteps,
@@ -106,34 +105,34 @@ export function useWebSocket() {
           progress: data.progress,
         })
         break
-        
+
       case 'trade':
         addLog(`Trade: ${data.side} @ ${data.price}, PnL: ${data.pnl?.toFixed(2)}`)
         break
-        
+
       case 'pong':
         // Heartbeat response
         break
-        
+
       default:
         console.log('Unknown message type:', data.type)
     }
   }, [setAgentStatus, setTrainingStatus, addCandle, addPrediction, addLog])
-  
+
   const sendMessage = useCallback((message: object) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message))
     }
   }, [])
-  
+
   useEffect(() => {
     connect()
-    
+
     // Heartbeat
     const heartbeatInterval = setInterval(() => {
       sendMessage({ type: 'ping' })
     }, 30000)
-    
+
     return () => {
       clearInterval(heartbeatInterval)
       if (reconnectTimeoutRef.current) {
@@ -144,7 +143,7 @@ export function useWebSocket() {
       }
     }
   }, [connect, sendMessage])
-  
+
   return { sendMessage }
 }
 
